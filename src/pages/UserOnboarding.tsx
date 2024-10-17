@@ -26,7 +26,7 @@ const UserOnboarding: React.FC = () => {
       setActiveStep(activeStep + 1);
     } else {
       // Redirect to data page on completion
-      navigate(`/data/${userId}`);
+      navigate(`/data`);
     }
   };
 
