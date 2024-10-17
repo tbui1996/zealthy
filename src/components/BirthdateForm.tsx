@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TextField, Box } from '@mui/material';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import useUpdateUser from '../mutations/useUpdateUser';
 
 interface BirthdateFormProps {
-  onSubmit: (values: { birthdate: string }) => void;
+  userId: string;
+  onSubmit: (data: { birthdate: string }) => void;
 }
 
 const validationSchema = Yup.object({
@@ -14,19 +16,36 @@ const validationSchema = Yup.object({
     .min(new Date(1900, 0, 1), 'Invalid birthdate'),
 });
 
-const BirthdateForm: React.FC<BirthdateFormProps> = ({ onSubmit }) => {
+const BirthdateForm: React.FC<BirthdateFormProps> = ({ userId, onSubmit }) => {
+  const updateUser = useUpdateUser();
+
   const formik = useFormik({
     initialValues: {
       birthdate: '',
     },
     validationSchema: validationSchema,
-    onSubmit: (values) => {
-      onSubmit(values);
+    onSubmit: async (values) => {
+      try {
+        await updateUser.mutateAsync({
+          id: userId,
+          birthdate: values.birthdate,
+        });
+        onSubmit(values);
+      } catch (err) {
+        console.error('Error updating birthday:', err);
+        // Handle error (e.g., show error message to user)
+      }
     },
   });
 
+  useEffect(() => {
+    if (formik.isValid && formik.dirty) {
+      formik.submitForm();
+    }
+  }, [formik.values]);
+
   return (
-    <form onSubmit={formik.handleSubmit}>
+    <form>
       <Box mb={2}>
         <TextField
           fullWidth

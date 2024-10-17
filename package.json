@@ -5,6 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.1.4",
     "@mui/material": "^6.1.4",
     "@mui/styles": "^6.1.4",
     "@testing-library/jest-dom": "^5.17.0",
@@ -14,6 +15,7 @@
     "@types/node": "^16.18.113",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "cors": "^2.8.5",
     "formik": "^2.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -1,19 +1,28 @@
 import React from 'react';
 import { useRecoilState } from 'recoil';
-import { FormControlLabel, Checkbox, Typography, Button } from '@mui/material';
-import { pageConfigState } from '../store/atoms';
+import { FormControlLabel, Checkbox, Typography, Button, Box } from '@mui/material';
+import { PageConfig, pageConfigState } from '../store/atoms';
 
 const AdminSection: React.FC = () => {
   const [pageConfig, setPageConfig] = useRecoilState(pageConfigState);
 
   const handleChange = (page: number, component: string) => {
     setPageConfig((prevConfig) => {
-      const newConfig = { ...prevConfig };
-      const pageIndex = newConfig[page].indexOf(component);
-      if (pageIndex === -1) {
-        newConfig[page].push(component);
+      const newConfig: PageConfig = { ...prevConfig };
+      
+      if (newConfig[page]?.includes(component)) {
+        // If the component is already in the page, remove it
+        newConfig[page] = newConfig[page].filter(item => item !== component);
       } else {
-        newConfig[page].splice(pageIndex, 1);
+        // If the component is not in the page, add it only if there are fewer than 2 components
+        if (newConfig[page]?.length < 2) {
+          // First, remove it from any other page
+          Object.keys(newConfig).forEach((key) => {
+            newConfig[Number(key)] = newConfig[Number(key)].filter(item => item !== component);
+          });
+          // Then add it to the selected page
+          newConfig[page] = [...(newConfig[page] || []), component];
+        }
       }
       return newConfig;
     });
@@ -21,34 +30,49 @@ const AdminSection: React.FC = () => {
 
   const handleSave = () => {
     // Save configuration to backend
+    console.log('Saving configuration:', pageConfig);
+  };
+
+  const isComponentUsed = (component: string, currentPage: number) => {
+    return Object.entries(pageConfig).some(([page, components]) => 
+      Number(page) !== currentPage && components.includes(component)
+    );
+  };
+
+  const isMaxComponentsReached = (page: number) => {
+    return pageConfig[page]?.length >= 2;
   };
 
   return (
-    <div>
+    <Box p={3}>
       <Typography variant="h4" gutterBottom>
         Admin Configuration
       </Typography>
-      {['Page 2', 'Page 3'].map((page, index) => (
-        <div key={page}>
-          <Typography variant="h6">{page}</Typography>
+      {[1, 2].map((pageIndex) => (
+        <Box key={pageIndex} mb={3}>
+          <Typography variant="h6">{`Additional Info ${pageIndex}`}</Typography>
           {['aboutMe', 'address', 'birthdate'].map((component) => (
             <FormControlLabel
               key={component}
               control={
                 <Checkbox
-                  checked={pageConfig[index + 1].includes(component)}
-                  onChange={() => handleChange(index + 1, component)}
+                  checked={pageConfig[pageIndex]?.includes(component)}
+                  onChange={() => handleChange(pageIndex, component)}
+                  disabled={
+                    isComponentUsed(component, pageIndex) ||
+                    (isMaxComponentsReached(pageIndex) && !pageConfig[pageIndex]?.includes(component))
+                  }
                 />
               }
               label={component}
             />
           ))}
-        </div>
+        </Box>
       ))}
       <Button variant="contained" color="primary" onClick={handleSave}>
         Save Configuration
       </Button>
-    </div>
+    </Box>
   );
 };
 

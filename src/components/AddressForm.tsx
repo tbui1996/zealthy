@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TextField, Box } from '@mui/material';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import useUpdateUser from '../mutations/useUpdateUser';
 
 interface AddressFormProps {
-  onSubmit: (values: { street: string; city: string; state: string; zip: string }) => void;
+  userId: string;
+  onSubmit: (data: { 
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  }) => void;
 }
 
 const validationSchema = Yup.object({
@@ -14,7 +21,9 @@ const validationSchema = Yup.object({
   zip: Yup.string().required('Required').matches(/^\d{5}$/, 'Invalid ZIP code'),
 });
 
-const AddressForm: React.FC<AddressFormProps> = ({ onSubmit }) => {
+const AddressForm: React.FC<AddressFormProps> = ({ userId, onSubmit }) => {
+  const updateUser = useUpdateUser();
+
   const formik = useFormik({
     initialValues: {
       street: '',
@@ -23,13 +32,33 @@ const AddressForm: React.FC<AddressFormProps> = ({ onSubmit }) => {
       zip: '',
     },
     validationSchema: validationSchema,
-    onSubmit: (values) => {
-      onSubmit(values);
+    onSubmit: async (values) => {
+      try {
+        await updateUser.mutateAsync({
+          id: userId,
+          address: {
+            street: values.street,
+            city: values.city,
+            state: values.state,
+            zip: values.zip,
+          },
+        });
+        onSubmit(values);
+      } catch (error) {
+        console.error('Error updating address:', error);
+        // Handle error (e.g., show error message to user)
+      }
     },
   });
 
+  useEffect(() => {
+    if (formik.isValid && formik.dirty) {
+      formik.submitForm();
+    }
+  }, [formik.values]);
+
   return (
-    <form onSubmit={formik.handleSubmit}>
+    <form>
       <Box mb={2}>
         <TextField
           fullWidth

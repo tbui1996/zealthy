@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Stepper, Step, StepLabel, Button, Typography } from '@mui/material';
-import { Formik, Form } from 'formik';
+import React, { useState, useEffect } from 'react';
+import { Stepper, Step, StepLabel, Typography, Box, Button } from '@mui/material';
 import { useRecoilValue } from 'recoil';
+import { useNavigate } from 'react-router-dom';
 import EmailPasswordForm from '../components/EmailPasswordForm';
 import AddressForm from '../components/AddressForm';
 import AboutMeForm from '../components/AboutMeForm';
@@ -9,79 +9,132 @@ import BirthdateForm from '../components/BirthdateForm';
 import { pageConfigState } from '../store/atoms';
 
 const UserOnboarding: React.FC = () => {
+  const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [stepData, setStepData] = useState<{[key: string]: any}>({});
   const pageConfig = useRecoilValue(pageConfigState);
+  const steps = ['Account Creation', ...Object.keys(pageConfig).map((_, index) => `Additional Info ${index + 1}`)];
 
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  const handleCreateUserSuccess = (newUserId: string) => {
+    setUserId(newUserId);
+    setActiveStep(1);
   };
 
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  const handleStepCompletion = () => {
+    if (activeStep < steps.length - 1) {
+      setActiveStep(activeStep + 1);
+    } else {
+      // Redirect to data page on completion
+      navigate(`/data/${userId}`);
+    }
   };
+
+  const handleFormSubmit = (formName: string, data: any) => {
+    setStepData(prevData => ({
+      ...prevData,
+      [formName]: data
+    }));
+  };
+
+  const isStepComplete = () => {
+    const currentForms = pageConfig[activeStep] || [];
+    return currentForms.every((form) => {
+      const formData = stepData[form];
+      if (!formData) return false;
+      
+      switch (form) {
+        case 'aboutMe':
+          return formData.aboutMe && formData.aboutMe.trim() !== '';
+        case 'address':
+          return formData.street && formData.city && formData.state && formData.zip;
+        case 'birthdate':
+          return formData.birthdate && formData.birthdate.trim() !== '';
+        default:
+          return false;
+      }
+    });
+  };
+
+  useEffect(() => {
+    console.log('Step Data:', stepData);
+    console.log('Is Step Complete:', isStepComplete());
+  }, [stepData]);
 
   const renderStepContent = (step: number) => {
-    switch (step) {
-      case 0:
-        return <EmailPasswordForm onSubmit={function (values: { email: string; password: string; }): void {
-            throw new Error('Function not implemented.');
-        } } />;
-      case 1:
-      case 2:
-        return (
-          <>
-            {pageConfig[step].includes('aboutMe') && <AboutMeForm onSubmit={function (values: { aboutMe: string; }): void {
-                    throw new Error('Function not implemented.');
-                } } />}
-            {pageConfig[step].includes('address') && <AddressForm onSubmit={function (values: { street: string; city: string; state: string; zip: string; }): void {
-                    throw new Error('Function not implemented.');
-                } } />}
-            {pageConfig[step].includes('birthdate') && <BirthdateForm onSubmit={function (values: { birthdate: string; }): void {
-                    throw new Error('Function not implemented.');
-                } } />}
-          </>
+    if (step === 0) {
+      return <EmailPasswordForm onSuccess={handleCreateUserSuccess} />;
+    } else if (userId) {
+      const pageIndex = step;
+      const components = [];
+  
+      if (pageConfig[pageIndex]?.includes('aboutMe')) {
+        components.push(
+          <AboutMeForm 
+            key="aboutMe" 
+            userId={userId} 
+            onSubmit={(data) => handleFormSubmit('aboutMe', data)} 
+          />
         );
-      default:
-        return null;
+      }
+      if (pageConfig[pageIndex]?.includes('address')) {
+        components.push(
+          <AddressForm 
+            key="address" 
+            userId={userId} 
+            onSubmit={(data) => handleFormSubmit('address', data)} 
+          />
+        );
+      }
+      if (pageConfig[pageIndex]?.includes('birthdate')) {
+        components.push(
+          <BirthdateForm 
+            key="birthdate" 
+            userId={userId} 
+            onSubmit={(data) => handleFormSubmit('birthdate', data)} 
+          />
+        );
+    }
+
+      return components.length > 0 ? (
+        <Box>
+          {components.map((component, index) => (
+            <Box key={index} mb={index < components.length - 1 ? 4 : 0}>
+              {component}
+            </Box>
+          ))}
+          <Button 
+            color="primary" 
+            variant="contained" 
+            fullWidth 
+            onClick={handleStepCompletion}
+            disabled={!isStepComplete()}
+          >
+            {activeStep === steps.length - 1 ? 'Complete' : 'Next'}
+          </Button>
+        </Box>
+      ) : null;
+    } else {
+      return <Typography>Error: User ID not found. Please start over.</Typography>;
     }
   };
 
   return (
-    <div>
-      <Typography variant="h4" gutterBottom>
+    <Box maxWidth="md" margin="auto" padding={4}>
+      <Typography variant="h4" align="center" gutterBottom>
         User Onboarding
       </Typography>
-      <Stepper activeStep={activeStep}>
-        {['Email & Password', 'Page 2', 'Page 3'].map((label, index) => (
+      <Stepper activeStep={activeStep} alternativeLabel>
+        {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
-      <Formik
-        initialValues={{}}
-        onSubmit={(values) => {
-          // Submit form data to backend
-        }}
-      >
-        <Form>
-          {renderStepContent(activeStep)}
-          <div>
-            {activeStep > 0 && (
-              <Button onClick={handleBack}>Back</Button>
-            )}
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={activeStep === 2 ? undefined : handleNext}
-              type={activeStep === 2 ? 'submit' : 'button'}
-            >
-              {activeStep === 2 ? 'Submit' : 'Next'}
-            </Button>
-          </div>
-        </Form>
-      </Formik>
-    </div>
+      <Box mt={4}>
+        {renderStepContent(activeStep)}
+      </Box>
+    </Box>
   );
 };
 

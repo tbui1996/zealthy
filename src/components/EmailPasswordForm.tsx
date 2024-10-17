@@ -2,9 +2,10 @@ import React from 'react';
 import { TextField, Button, Box } from '@mui/material';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import useCreateUser from '../mutations/useCreateUser';
 
 interface EmailPasswordFormProps {
-  onSubmit: (values: { email: string; password: string }) => void;
+  onSuccess: (userId: string) => void;
 }
 
 const validationSchema = Yup.object({
@@ -12,15 +13,28 @@ const validationSchema = Yup.object({
   password: Yup.string().min(8, 'Must be at least 8 characters').required('Required'),
 });
 
-const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSubmit }) => {
+const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSuccess }) => {
+  const createUser = useCreateUser();
+
   const formik = useFormik({
     initialValues: {
       email: '',
       password: '',
     },
     validationSchema: validationSchema,
-    onSubmit: (values) => {
-      onSubmit(values);
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const response = await createUser.mutateAsync({
+          email: values.email,
+          password: values.password,
+        });
+        onSuccess(response.data.id);
+      } catch (error) {
+        console.error('Error creating user:', error);
+        // Handle error (e.g., show error message to user)
+      } finally {
+        setSubmitting(false);
+      }
     },
   });
 
@@ -51,8 +65,8 @@ const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSubmit }) => {
           helperText={formik.touched.password && formik.errors.password}
         />
       </Box>
-      <Button color="primary" variant="contained" fullWidth type="submit">
-        Next
+      <Button color="primary" variant="contained" fullWidth type="submit" disabled={formik.isSubmitting}>
+        Create Account
       </Button>
     </form>
   );
