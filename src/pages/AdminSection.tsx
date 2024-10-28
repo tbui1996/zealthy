@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useRecoilState } from 'recoil';
 import { 
   FormControlLabel, 
   Checkbox, 
@@ -14,7 +13,7 @@ import {
   useTheme,
   useMediaQuery 
 } from '@mui/material';
-import { PageConfig, pageConfigState } from '../store/atoms';
+import { PageConfig } from '../store/atoms';
 import useUpdateConfig from '../mutations/useUpdateConfig';
 import useGetConfig from '../queries/useGetConfig';
 

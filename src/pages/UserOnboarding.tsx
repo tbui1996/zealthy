@@ -1,44 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { Stepper, Step, StepLabel, Typography, Box, Button, CircularProgress } from '@mui/material';
+import { 
+  Stepper, 
+  Step, 
+  StepLabel, 
+  Typography, 
+  Box, 
+  Button, 
+  CircularProgress,
+  useTheme,
+  useMediaQuery 
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import EmailPasswordForm from '../components/EmailPasswordForm';
 import AddressForm from '../components/AddressForm';
 import AboutMeForm from '../components/AboutMeForm';
 import BirthdateForm from '../components/BirthdateForm';
 import useGetConfig from '../queries/useGetConfig';
+import { saveProgress, getProgress, clearProgress, UserProgress } from '../utils/progressUtils';
 
 const UserOnboarding: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [activeStep, setActiveStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [stepData, setStepData] = useState<{[key: string]: any}>({});
   
   const { data: configResponse, isLoading, isError } = useGetConfig();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const pageConfig = configResponse?.data?.data || { 1: [], 2: [] };
 
-  // Create steps array including Account Creation and additional info pages
   const steps = ['Account Creation', ...Object.keys(pageConfig)
     .sort((a, b) => Number(a) - Number(b))
     .map(pageNum => `Additional Info ${pageNum}`)
   ];
 
+  // Load saved progress on initial mount
   useEffect(() => {
-    console.log('Current pageConfig:', pageConfig);
-    console.log('Current activeStep:', activeStep);
-    console.log('Current stepData:', stepData);
-  }, [pageConfig, activeStep, stepData]);
+    const savedProgress = getProgress();
+    if (savedProgress) {
+      setUserId(savedProgress.userId);
+      setActiveStep(savedProgress.currentStep);
+      setCompletedSteps(savedProgress.completedSteps);
+      
+      // If they've already created an account but haven't completed onboarding,
+      // ensure step 0 (account creation) is marked as completed
+      if (savedProgress.userId && !savedProgress.completedSteps.includes(0)) {
+        setCompletedSteps(prev => [...prev, 0]);
+      }
+    }
+  }, []);
+
+  // Save progress whenever it changes
+  useEffect(() => {
+    if (userId) {
+      const progress: UserProgress = {
+        userId,
+        currentStep: activeStep,
+        completedSteps
+      };
+      saveProgress(progress);
+    }
+  }, [userId, activeStep, completedSteps]);
 
   const handleCreateUserSuccess = (newUserId: string) => {
     setUserId(newUserId);
     setActiveStep(1);
+    setCompletedSteps(prev => [...prev, 0]); // Mark account creation as complete
   };
 
   const handleStepCompletion = () => {
+    setCompletedSteps(prev => [...prev, activeStep]);
+    
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
     } else {
-      navigate(`/data`);
+      clearProgress(); // Clear progress when flow is complete
+      navigate('/data');
     }
   };
 
@@ -49,15 +87,14 @@ const UserOnboarding: React.FC = () => {
     }));
   };
 
-  const isStepComplete = () => {
-    if (activeStep === 0) return true;
+  const isStepComplete = (step: number): boolean => {
+    if (step === 0) {
+      return Boolean(userId) || completedSteps.includes(0);
+    }
 
-    const currentForms = pageConfig[activeStep] || [];
-    console.log('Checking completion for forms:', currentForms);
-    
+    const currentForms = pageConfig[step] || [];
     return currentForms.every((form) => {
       const formData = stepData[form];
-      console.log(`Checking ${form} completion:`, formData);
       
       if (!formData) return false;
       
@@ -80,11 +117,28 @@ const UserOnboarding: React.FC = () => {
     }
 
     if (!userId) {
-      return <Typography>Error: User ID not found. Please start over.</Typography>;
+      return (
+        <Box p={2}>
+          <Typography color="error">
+            Error: User ID not found. Please start over.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => {
+              clearProgress();
+              setActiveStep(0);
+              setCompletedSteps([]);
+            }}
+            sx={{ mt: 2 }}
+          >
+            Start Over
+          </Button>
+        </Box>
+      );
     }
 
     const currentPageComponents = pageConfig[step] || [];
-    console.log(`Rendering page ${step} components:`, currentPageComponents);
 
     const components = currentPageComponents.map(componentName => {
       switch (componentName) {
@@ -121,14 +175,14 @@ const UserOnboarding: React.FC = () => {
     }).filter(Boolean);
 
     return components.length > 0 ? (
-      <Box>
+      <Box p={isMobile ? 2 : 3}>
         {components}
         <Button 
           color="primary" 
           variant="contained" 
-          fullWidth 
+          fullWidth={isMobile}
           onClick={handleStepCompletion}
-          disabled={!isStepComplete()}
+          disabled={!isStepComplete(step)}
           sx={{ mt: 2 }}
         >
           {activeStep === steps.length - 1 ? 'Complete' : 'Next'}
@@ -147,7 +201,7 @@ const UserOnboarding: React.FC = () => {
 
   if (isError) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="400px">
+      <Box p={2}>
         <Typography color="error">
           Error loading configuration. Please refresh the page.
         </Typography>
@@ -156,13 +210,17 @@ const UserOnboarding: React.FC = () => {
   }
 
   return (
-    <Box maxWidth="md" margin="auto" padding={4}>
+    <Box maxWidth="md" margin="auto" padding={isMobile ? 2 : 4}>
       <Typography variant="h4" align="center" gutterBottom>
         User Onboarding
       </Typography>
-      <Stepper activeStep={activeStep} alternativeLabel>
-        {steps.map((label) => (
-          <Step key={label}>
+      <Stepper 
+        activeStep={activeStep} 
+        alternativeLabel={!isMobile}
+        orientation={isMobile ? 'vertical' : 'horizontal'}
+      >
+        {steps.map((label, index) => (
+          <Step key={label} completed={completedSteps.includes(index)}>
             <StepLabel>{label}</StepLabel>
           </Step>
         ))}

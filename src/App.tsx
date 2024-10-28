@@ -18,11 +18,12 @@ import { Menu as MenuIcon, ChevronLeft as ChevronLeftIcon } from '@mui/icons-mat
 import UserOnboarding from './pages/UserOnboarding';
 import AdminSection from './pages/AdminSection';
 import DataTable from './pages/DataTable';
+import OnboardingBanner from './components/OnboardingBanner';
 import theme from './theme';
 import NavigationDrawer from './components/NavigationDrawer';
+import { getProgress } from './utils/progressUtils';
 
 const drawerWidth = 240;
-
 const queryClient = new QueryClient();
 
 const MainContent: React.FC = () => {
@@ -30,6 +31,8 @@ const MainContent: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
+  const progress = getProgress();
+  const showBanner = progress?.userId && location.pathname !== '/' && !progress.completedSteps.includes(2);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -111,16 +114,18 @@ const MainContent: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           mt: { xs: 7, sm: 8 },
         }}
       >
-        <Routes>
-          <Route path="/" element={<UserOnboarding />} />
-          <Route path="/admin" element={<AdminSection />} />
-          <Route path="/data" element={<DataTable />} />
-        </Routes>
+        {showBanner && <OnboardingBanner />}
+        <Box sx={{ p: 3 }}>
+          <Routes>
+            <Route path="/" element={<UserOnboarding />} />
+            <Route path="/admin" element={<AdminSection />} />
+            <Route path="/data" element={<DataTable />} />
+          </Routes>
+        </Box>
       </Box>
     </Box>
   );
