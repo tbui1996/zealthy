@@ -15,9 +15,12 @@ const useGetConfig = (): UseQueryResult<AxiosResponse<GetConfigResponse>, string
         useGetConfigKey,
         () => axiosInstance.get('/api/admin/config'),
         {
-            staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
+            staleTime: 0, // Always consider the data stale
             cacheTime: 1000 * 60 * 30, // Keep data in cache for 30 minutes
-            retry: 2, // Retry failed requests twice
+            retry: 2,
+            refetchOnMount: true,
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
             onError: (error) => {
                 console.error('Failed to fetch config:', error);
             }

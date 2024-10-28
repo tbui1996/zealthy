@@ -25,28 +25,53 @@ const useUpdateConfig = (
     > = {}
 ): UseMutationResult<AxiosResponse<UpdateConfigResponse>, string, PageConfig> => {
     const queryClient = useQueryClient();
-
+    
     return useMutation<AxiosResponse<UpdateConfigResponse>, string, PageConfig>(
         (config) => {
             return axiosInstance.post('/api/admin/config', config);
         },
         {
             ...options,
+            onMutate: async (newConfig) => {
+                // Cancel any outgoing refetches to avoid optimistic update overwrite
+                await queryClient.cancelQueries(useGetConfigKey);
+
+                // Save the previous value
+                const previousConfig = queryClient.getQueryData(useGetConfigKey);
+
+                // Optimistically update the cache
+                queryClient.setQueryData(useGetConfigKey, (old: any) => ({
+                    ...old,
+                    data: {
+                        success: true,
+                        data: newConfig
+                    }
+                }));
+
+                return { previousConfig };
+            },
             onSuccess: async (data, variables, context) => {
                 // Call the original onSuccess if it exists
                 options.onSuccess?.(data, variables, context);
-
-                // Invalidate the config query to trigger a refetch
-                queryClient.invalidateQueries(useGetConfigKey);
-
-                // Optionally update the cache directly
-                queryClient.setQueryData(useGetConfigKey, data.data);
+                
+                // Force a refetch to ensure cache is up to date
+                queryClient.removeQueries(useGetConfigKey);
+                queryClient.prefetchQuery(useGetConfigKey, () => 
+                    axiosInstance.get('/api/admin/config')
+                );
             },
-            onError: (error, variables, context) => {
-                // Call the original onError if it exists
+            onError: (error, variables, context: any) => {
+                // Revert to previous value on error
+                if (context?.previousConfig) {
+                    queryClient.setQueryData(useGetConfigKey, context.previousConfig);
+                }
+                
                 options.onError?.(error, variables, context);
-
                 console.error('Failed to update config:', error);
+            },
+            onSettled: () => {
+                // Always refetch after error or success
+                queryClient.invalidateQueries(useGetConfigKey);
             }
         }
     );
