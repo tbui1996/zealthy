@@ -1,21 +1,29 @@
-import React, { useState } from 'react';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, IconButton } from '@mui/material';
-import { Menu as MenuIcon, Home as HomeIcon, AdminPanelSettings as AdminIcon, TableChart as TableIcon } from '@mui/icons-material';
-import { Link as RouterLink } from 'react-router-dom';
+import React from 'react';
+import { 
+  List, 
+  ListItem, 
+  ListItemIcon, 
+  ListItemText, 
+  Box,
+  IconButton,
+  Typography,
+  Divider,
+  ListItemButton
+} from '@mui/material';
+import { 
+  Home as HomeIcon, 
+  AdminPanelSettings as AdminIcon, 
+  TableChart as TableIcon,
+  ChevronLeft as ChevronLeftIcon 
+} from '@mui/icons-material';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 
-const NavigationDrawer: React.FC = () => {
-  const [open, setOpen] = useState(false);
+interface NavigationDrawerProps {
+  onClose?: () => void;
+}
 
-  const toggleDrawer = (isOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
-    if (
-      event.type === 'keydown' &&
-      ((event as React.KeyboardEvent).key === 'Tab' || (event as React.KeyboardEvent).key === 'Shift')
-    ) {
-      return;
-    }
-    setOpen(isOpen);
-  };
-
+const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ onClose }) => {
+  const location = useLocation();
   const menuItems = [
     { text: 'User Onboarding', icon: <HomeIcon />, path: '/' },
     { text: 'Admin Section', icon: <AdminIcon />, path: '/admin' },
@@ -23,21 +31,48 @@ const NavigationDrawer: React.FC = () => {
   ];
 
   return (
-    <>
-      <IconButton edge="start" color="inherit" aria-label="menu" onClick={toggleDrawer(true)}>
-        <MenuIcon />
-      </IconButton>
-      <Drawer anchor="left" open={open} onClose={toggleDrawer(false)}>
-        <List>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} component={RouterLink} to={item.path} onClick={toggleDrawer(false)}>
+    <Box sx={{ width: 240 }}>
+      {onClose && (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          p: 2
+        }}>
+          <Typography variant="h6">Menu</Typography>
+          <IconButton onClick={onClose}>
+            <ChevronLeftIcon />
+          </IconButton>
+        </Box>
+      )}
+      <Divider />
+      <List>
+        {menuItems.map((item) => (
+          <ListItem 
+            key={item.text} 
+            disablePadding
+          >
+            <ListItemButton
+              component={RouterLink}
+              to={item.path}
+              onClick={onClose}
+              selected={location.pathname === item.path}
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: 'primary.light',
+                  '&:hover': {
+                    backgroundColor: 'primary.light',
+                  },
+                },
+              }}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
-    </>
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </Box>
   );
 };
 

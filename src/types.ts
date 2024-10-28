@@ -42,3 +42,41 @@ export interface UpdateUserRequest {
     } | null;
     birthdate?: string | null;
   }
+
+  export interface PageConfig {
+    [key: number]: string[];
+  }
+  
+export interface ApiResponse {
+    success: boolean;
+    data?: PageConfig;
+    error?: string;
+  }
+
+
+
+export interface OnboardingProgress {
+    currentStep: number;
+    stepData: {
+      [key: string]: any;
+    };
+    completed: boolean;
+    lastUpdated: Date;
+  }
+  
+export interface GetOnboardingProgressResponse {
+    success: boolean;
+    data?: OnboardingProgress;
+    error?: string;
+  }
+
+  export interface SaveOnboardingProgressResponse {
+    success: boolean;
+    data?: OnboardingProgress;
+    error?: string;
+  }
+  
+  export interface SaveOnboardingProgressParams {
+    userId: string;
+    progress: Omit<OnboardingProgress, 'lastUpdated'>;
+}
